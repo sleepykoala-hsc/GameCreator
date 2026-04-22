@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GAME_NAME</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <!--
+    Replace the CDN link below with the appropriate framework:
+
+    Phaser 3:
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
+
+    PixiJS:
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+
+    Babylon.js:
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+
+    Three.js:
+    <script src="https://cdn.jsdelivr.net/npm/three@0.163/build/three.min.js"></script>
+  -->
+  <script src="FRAMEWORK_CDN_URL"></script>
+
+  <!-- Shared utilities (adjust relative path as needed) -->
+  <script src="../../shared/utils/math.js"></script>
+  <script src="../../shared/utils/input.js"></script>
+
+  <!-- Game scripts (load order matters) -->
+  <script src="src/config.js"></script>
+  <script src="src/scenes/BootScene.js"></script>
+  <script src="src/scenes/GameScene.js"></script>
+  <script src="src/scenes/UIScene.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
