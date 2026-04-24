@@ -343,6 +343,21 @@ class BootScene extends Phaser.Scene {
     aura.strokeCircle(41, 41, 26);
     aura.generateTexture('powerup_shield_aura', 82, 82);
     aura.destroy();
+
+    const coin = this.make.graphics({ x: 0, y: 0, add: false });
+    coin.fillStyle(0xffd54f, 1);
+    coin.lineStyle(3, 0x2d2a32, 1);
+    coin.fillCircle(14, 14, 11);
+    coin.strokeCircle(14, 14, 11);
+    coin.lineStyle(2, 0xfff4bf, 0.95);
+    coin.strokeCircle(14, 14, 7);
+    coin.lineStyle(3, 0x2d2a32, 1);
+    coin.beginPath();
+    coin.moveTo(14, 8);
+    coin.lineTo(14, 20);
+    coin.strokePath();
+    coin.generateTexture('pickup_coin', 28, 28);
+    coin.destroy();
   }
 
   createCloudTexture() {

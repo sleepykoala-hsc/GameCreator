@@ -8,10 +8,11 @@ class GameScene extends Phaser.Scene {
     this.canRestart = false;
     this.gameOverReason = '失足掉出了画面';
     this.score = 0;
+    this.runCoins = 0;
+    this.upgrades = this.getStoredUpgrades();
     this.bestPlayerY = GameConfig.player.startY;
     this.nextPlatformY = GameConfig.player.startY + 60;
     this.bus = this.game.events;
-    this.restartKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     this.cameras.main.setBackgroundColor(GameConfig.backgroundColor);
     this.physics.world.setBounds(
@@ -30,6 +31,7 @@ class GameScene extends Phaser.Scene {
     this.createStartingPlatforms();
     this.createColliders();
     this.syncScore(true);
+    this.syncCoins(true);
     this.refreshStatusMessage();
   }
 
@@ -65,6 +67,7 @@ class GameScene extends Phaser.Scene {
     this.platforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.springs = this.physics.add.group({ allowGravity: false, immovable: true });
     this.powerups = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.coins = this.physics.add.group({ allowGravity: false, immovable: true });
     this.enemies = this.physics.add.group({ allowGravity: false, immovable: true });
     this.traps = this.physics.add.group({ allowGravity: false, immovable: true });
     this.lasers = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -118,6 +121,7 @@ class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.platforms, this.handlePlatformLanding, this.canLandOnPlatform, this);
     this.physics.add.overlap(this.player, this.springs, this.handleSpringOverlap, null, this);
     this.physics.add.overlap(this.player, this.powerups, this.handlePowerupOverlap, null, this);
+    this.physics.add.overlap(this.player, this.coins, this.handleCoinOverlap, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.handleEnemyOverlap, null, this);
     this.physics.add.overlap(this.player, this.traps, this.handleTrapOverlap, null, this);
     this.physics.add.overlap(this.lasers, this.enemies, this.handleLaserEnemyOverlap, null, this);
@@ -127,7 +131,6 @@ class GameScene extends Phaser.Scene {
     this.updateBackdrop();
 
     if (this.isGameOver) {
-      this.handleRestartInput();
       return;
     }
 
@@ -139,6 +142,7 @@ class GameScene extends Phaser.Scene {
     this.updateDifficulty();
     this.updateMovingPlatforms(delta);
     this.updateAttachedObjects(delta);
+    this.updateCoins(delta);
     this.recycleOffscreenObjects();
     this.checkFailure();
   }
@@ -322,6 +326,12 @@ class GameScene extends Phaser.Scene {
       }
     });
 
+    this.coins.getChildren().forEach((coin) => {
+      if (coin.active && coin.y > cleanupY) {
+        coin.destroy();
+      }
+    });
+
     this.enemies.getChildren().forEach((enemy) => {
       if (enemy.active && enemy.y > cleanupY) {
         this.destroyHazard(enemy);
@@ -364,25 +374,17 @@ class GameScene extends Phaser.Scene {
     this.player.setTint(tint);
     this.player.setVelocity(0, 0);
     this.physics.pause();
+    const totalCoins = this.addCoinsToTotal(this.runCoins);
     this.bus.emit('game-over', {
       score: this.score,
       bestScore: this.getBestScore(),
+      coins: this.runCoins,
+      totalCoins,
       reason: this.gameOverReason,
     });
     this.time.delayedCall(300, () => {
       this.canRestart = true;
     });
-  }
-
-  handleRestartInput() {
-    const pointer = this.input.activePointer;
-    if (!this.canRestart) {
-      return;
-    }
-
-    if (Phaser.Input.Keyboard.JustDown(this.restartKey) || pointer.justDown) {
-      this.scene.restart();
-    }
   }
 
   canLandOnPlatform(player, platform) {
@@ -455,16 +457,25 @@ class GameScene extends Phaser.Scene {
     this.activatePowerup(type);
   }
 
+  handleCoinOverlap(_, coin) {
+    if (!coin.active) {
+      return;
+    }
+
+    this.addCoins(coin.getData('value') || GameConfig.currency.coinValue);
+    coin.destroy();
+  }
+
   activatePowerup(type) {
     const now = this.time.now;
 
     if (type === 'rocket') {
-      this.activeEffects.rocketUntil = now + GameConfig.powerups.rocketDuration;
+      this.activeEffects.rocketUntil = now + this.getPowerupDuration('rocket');
     } else if (type === 'laser') {
-      this.activeEffects.laserUntil = now + GameConfig.powerups.laserDuration;
+      this.activeEffects.laserUntil = now + this.getPowerupDuration('laser');
       this.nextLaserShotAt = now;
     } else if (type === 'shield') {
-      this.activeEffects.shieldUntil = now + GameConfig.powerups.shieldDuration;
+      this.activeEffects.shieldUntil = now + this.getPowerupDuration('shield');
     }
 
     this.refreshStatusMessage();
@@ -525,6 +536,7 @@ class GameScene extends Phaser.Scene {
     }
 
     laser.destroy();
+    this.addCoins(GameConfig.currency.enemyKillReward);
     this.destroyHazard(enemy);
   }
 
@@ -646,6 +658,8 @@ class GameScene extends Phaser.Scene {
         this.getPlatformWidth(difficulty) * GameConfig.platform.secondaryWidthRatio
       );
     }
+
+    this.trySpawnCoin(y, difficulty);
   }
 
   spawnPlatform(x, y, type, width) {
@@ -791,7 +805,60 @@ class GameScene extends Phaser.Scene {
     const baseChance = GameConfig.powerups[`${type}ChanceBase`];
     const chanceDrop = GameConfig.powerups[`${type}ChanceDrop`] || 0;
     const minChance = GameConfig.powerups[`${type}ChanceMin`] || 0;
-    return Math.max(minChance, baseChance - difficulty * chanceDrop);
+    const luckMultiplier = 1 + this.getUpgradeBonus('luck');
+    const adjustedChance = Math.max(minChance, baseChance - difficulty * chanceDrop);
+    return Math.min(1, adjustedChance * luckMultiplier);
+  }
+
+  getPowerupDuration(type) {
+    return GameConfig.powerups[`${type}Duration`] + this.getUpgradeBonus(`${type}Duration`);
+  }
+
+  trySpawnCoin(y, difficulty) {
+    const chance = Math.max(
+      GameConfig.currency.coinSpawnChanceMin,
+      GameConfig.currency.coinSpawnChanceBase - difficulty * GameConfig.currency.coinSpawnChanceDrop
+    );
+
+    if (Math.random() > chance) {
+      return;
+    }
+
+    const x = Phaser.Math.Between(
+      GameConfig.currency.coinSpawnXMargin,
+      GameConfig.width - GameConfig.currency.coinSpawnXMargin
+    );
+    const offsetY = Phaser.Math.Between(
+      GameConfig.currency.coinSpawnYOffsetMin,
+      GameConfig.currency.coinSpawnYOffsetMax
+    );
+    this.spawnCoin(x, y + offsetY);
+  }
+
+  spawnCoin(x, y) {
+    const coin = this.physics.add.image(x, y, 'pickup_coin');
+    coin.setImmovable(true);
+    coin.body.allowGravity = false;
+    coin.setDepth(6);
+    coin.setDisplaySize(GameConfig.currency.coinDisplaySize, GameConfig.currency.coinDisplaySize);
+    coin.body.setCircle(GameConfig.currency.coinBodySize * 0.5);
+    coin.body.setOffset(
+      (GameConfig.currency.coinDisplaySize - GameConfig.currency.coinBodySize) * 0.5,
+      (GameConfig.currency.coinDisplaySize - GameConfig.currency.coinBodySize) * 0.5
+    );
+    coin.setDataEnabled();
+    coin.setData('value', GameConfig.currency.coinValue);
+    this.coins.add(coin);
+  }
+
+  updateCoins(delta) {
+    this.coins.getChildren().forEach((coin) => {
+      if (!coin.active) {
+        return;
+      }
+
+      coin.angle += delta * GameConfig.currency.coinSpinSpeed;
+    });
   }
 
   isRocketActive() {
@@ -969,9 +1036,22 @@ class GameScene extends Phaser.Scene {
     this.bus.emit('best-score-changed', bestScore);
   }
 
+  syncCoins() {
+    this.bus.emit('coins-changed', this.runCoins);
+  }
+
+  addCoins(amount) {
+    if (!amount) {
+      return;
+    }
+
+    this.runCoins += amount;
+    this.syncCoins();
+  }
+
   getBestScore() {
     try {
-      return Number(window.localStorage.getItem(GameConfig.storageKey) || 0);
+      return Number(window.localStorage.getItem(GameConfig.storage.bestScore) || 0);
     } catch (error) {
       return 0;
     }
@@ -981,12 +1061,63 @@ class GameScene extends Phaser.Scene {
     const bestScore = Math.max(this.getBestScore(), score);
 
     try {
-      window.localStorage.setItem(GameConfig.storageKey, String(bestScore));
+      window.localStorage.setItem(GameConfig.storage.bestScore, String(bestScore));
     } catch (error) {
       return bestScore;
     }
 
     return bestScore;
+  }
+
+  getStoredUpgrades() {
+    const defaults = Object.keys(GameConfig.shop.upgrades).reduce((result, key) => {
+      result[key] = 0;
+      return result;
+    }, {});
+
+    try {
+      const raw = window.localStorage.getItem(GameConfig.storage.upgrades);
+      if (!raw) {
+        return defaults;
+      }
+
+      return {
+        ...defaults,
+        ...JSON.parse(raw),
+      };
+    } catch (error) {
+      return defaults;
+    }
+  }
+
+  getUpgradeBonus(key) {
+    const upgrade = GameConfig.shop.upgrades[key];
+    if (!upgrade) {
+      return 0;
+    }
+
+    const level = Phaser.Math.Clamp(this.upgrades[key] || 0, 0, upgrade.bonuses.length - 1);
+    return upgrade.bonuses[level] || 0;
+  }
+
+  getStoredTotalCoins() {
+    try {
+      return Number(window.localStorage.getItem(GameConfig.storage.totalCoins) || 0);
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  addCoinsToTotal(amount) {
+    const totalCoins = this.getStoredTotalCoins() + amount;
+
+    try {
+      window.localStorage.setItem(GameConfig.storage.totalCoins, String(totalCoins));
+    } catch (error) {
+      return totalCoins;
+    }
+
+    return totalCoins;
   }
 
   playSurfaceSound(soundKey) {

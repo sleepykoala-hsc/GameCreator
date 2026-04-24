@@ -3,7 +3,7 @@ const GameConfig = {
   height: 720,
   backgroundColor: 0xf6eedb,
   gravity: 1400,
-  storageKey: 'skybound-scribble-best-score',
+  storage: GameSystemConfig.storage,
 
   player: {
     startX: 240,
@@ -84,7 +84,11 @@ const GameConfig = {
     enemyBodyOffsetY: 10,
   },
 
-  powerups: PowerupConfig,
+  currency: GameSystemConfig.currency,
+
+  powerups: GameSystemConfig.powerups,
+
+  shop: GameSystemConfig.shop,
 
   difficulty: {
     maxTravelHeight: 2400,
