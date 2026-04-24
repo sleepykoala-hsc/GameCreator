@@ -33,8 +33,16 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
   updateVisuals() {
     this.play('player_jump', true);
-    this.rotation = Phaser.Math.Clamp(this.body.velocity.x / 900, -0.18, 0.18);
-    this.anims.timeScale = Phaser.Math.Clamp(Math.abs(this.body.velocity.y) / 320, 0.85, 1.8);
+    this.rotation = Phaser.Math.Clamp(
+      this.body.velocity.x / GameConfig.player.maxTiltVelocity,
+      -GameConfig.player.maxTiltAngle,
+      GameConfig.player.maxTiltAngle
+    );
+    this.anims.timeScale = Phaser.Math.Clamp(
+      Math.abs(this.body.velocity.y) / GameConfig.player.animationVelocityScale,
+      GameConfig.player.animationSpeedMin,
+      GameConfig.player.animationSpeedMax
+    );
   }
 
   wrapHorizontally(width) {

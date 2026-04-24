@@ -14,6 +14,11 @@ const GameConfig = {
     springForce: 980,
     width: 52,
     height: 52,
+    maxTiltVelocity: 900,
+    maxTiltAngle: 0.18,
+    animationVelocityScale: 320,
+    animationSpeedMin: 0.85,
+    animationSpeedMax: 1.8,
   },
 
   camera: {
@@ -29,13 +34,23 @@ const GameConfig = {
     height: 24,
     baseGap: 82,
     maxGap: 128,
-    gapGrowth: 32,
     movingSpeedMin: 55,
     movingSpeedMax: 115,
     extraPlatformChance: 0.32,
+    secondaryWidthRatio: 0.86,
     movingPlatformStart: 260,
     breakPlatformStart: 540,
     springStart: 180,
+    springChanceBase: 0.18,
+    springChanceDrop: 0.06,
+    movingChanceBase: 0.2,
+    movingChanceGrowth: 0.18,
+    breakingChanceBase: 0.1,
+    breakingChanceGrowth: 0.16,
+  },
+
+  difficulty: {
+    maxTravelHeight: 2400,
   },
 
   scoring: {

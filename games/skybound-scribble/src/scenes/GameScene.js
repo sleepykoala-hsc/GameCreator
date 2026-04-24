@@ -226,7 +226,6 @@ class GameScene extends Phaser.Scene {
 
     if (Phaser.Input.Keyboard.JustDown(this.restartKey) || pointer.justDown) {
       this.scene.restart();
-      this.physics.resume();
     }
   }
 
@@ -240,7 +239,7 @@ class GameScene extends Phaser.Scene {
 
     if (platform.getData('type') === 'breaking' && !platform.getData('broken')) {
       platform.setData('broken', true);
-      platform.body.enable = false;
+      platform.body.setEnable(false);
       this.tweens.add({
         targets: platform,
         y: platform.y + 70,
@@ -280,7 +279,12 @@ class GameScene extends Phaser.Scene {
       const distance = Phaser.Math.Between(120, 170);
       const direction = Math.random() > 0.5 ? 1 : -1;
       const secondaryX = Phaser.Math.Clamp(primaryX + distance * direction, 70, GameConfig.width - 70);
-      this.spawnPlatform(secondaryX, y + Phaser.Math.Between(-18, 18), 'static', this.getPlatformWidth(difficulty) * 0.86);
+      this.spawnPlatform(
+        secondaryX,
+        y + Phaser.Math.Between(-18, 18),
+        'static',
+        this.getPlatformWidth(difficulty) * GameConfig.platform.secondaryWidthRatio
+      );
     }
   }
 
@@ -327,7 +331,7 @@ class GameScene extends Phaser.Scene {
     }
 
     const difficulty = this.getDifficulty(travelHeight);
-    const chance = 0.18 - difficulty * 0.06;
+    const chance = GameConfig.platform.springChanceBase - difficulty * GameConfig.platform.springChanceDrop;
     if (Math.random() > chance) {
       return;
     }
@@ -357,8 +361,10 @@ class GameScene extends Phaser.Scene {
 
     const difficulty = this.getDifficulty(travelHeight);
     const roll = Math.random();
-    const movingChance = 0.2 + difficulty * 0.18;
-    const breakingChance = travelHeight < GameConfig.platform.breakPlatformStart ? 0 : 0.1 + difficulty * 0.16;
+    const movingChance = GameConfig.platform.movingChanceBase + difficulty * GameConfig.platform.movingChanceGrowth;
+    const breakingChance = travelHeight < GameConfig.platform.breakPlatformStart
+      ? 0
+      : GameConfig.platform.breakingChanceBase + difficulty * GameConfig.platform.breakingChanceGrowth;
 
     if (roll < breakingChance) {
       return 'breaking';
@@ -376,7 +382,7 @@ class GameScene extends Phaser.Scene {
   }
 
   getDifficulty(travelHeight) {
-    return Phaser.Math.Clamp(travelHeight / 2400, 0, 1);
+    return Phaser.Math.Clamp(travelHeight / GameConfig.difficulty.maxTravelHeight, 0, 1);
   }
 
   getTravelHeightForY(y) {
