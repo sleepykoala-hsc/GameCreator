@@ -676,8 +676,14 @@ class GameScene extends Phaser.Scene {
     platform.body.allowGravity = false;
     platform.setDepth(5);
     platform.setDisplaySize(width, GameConfig.platform.height);
-    platform.body.setSize(width - 8, GameConfig.platform.height - 8);
-    platform.body.setOffset(4, 4);
+    platform.body.setSize(
+      width + GameConfig.platform.collisionExtraWidth,
+      GameConfig.platform.height - GameConfig.platform.collisionInsetY
+    );
+    platform.body.setOffset(
+      -GameConfig.platform.collisionExtraWidth * 0.5,
+      GameConfig.platform.collisionInsetY * 0.5
+    );
     platform.body.checkCollision.down = false;
     platform.body.checkCollision.left = false;
     platform.body.checkCollision.right = false;

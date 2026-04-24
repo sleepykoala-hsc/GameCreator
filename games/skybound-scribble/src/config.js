@@ -33,6 +33,8 @@ const GameConfig = {
     baseWidth: 128,
     minWidth: 80,
     height: 24,
+    collisionExtraWidth: 16,
+    collisionInsetY: 8,
     baseGap: 82,
     maxGap: 128,
     movingSpeedMin: 55,
