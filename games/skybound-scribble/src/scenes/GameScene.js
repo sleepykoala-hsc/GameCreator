@@ -210,7 +210,7 @@ class GameScene extends Phaser.Scene {
         return;
       }
 
-      trap.x = host.x;
+      trap.x = host.x + trap.getData('offsetX');
       trap.y = host.y - host.displayHeight * 0.7;
       trap.body.updateFromGameObject();
     });
@@ -227,17 +227,31 @@ class GameScene extends Phaser.Scene {
         return;
       }
 
-      let offsetX = enemy.getData('offsetX') + enemy.getData('speed') * enemy.getData('direction') * deltaSeconds;
-      const limit = Math.max(12, host.displayWidth * 0.5 - GameConfig.hazards.enemyPatrolPadding);
-      if (Math.abs(offsetX) > limit) {
-        offsetX = Phaser.Math.Clamp(offsetX, -limit, limit);
+      const axis = enemy.getData('axis');
+      const dataKey = axis === 'vertical' ? 'offsetY' : 'offsetX';
+      let offset = enemy.getData(dataKey) + enemy.getData('speed') * enemy.getData('direction') * deltaSeconds;
+      const limit = enemy.getData('range');
+
+      if (Math.abs(offset) > limit) {
+        offset = Phaser.Math.Clamp(offset, -limit, limit);
         enemy.setData('direction', enemy.getData('direction') * -1);
       }
 
-      enemy.setData('offsetX', offsetX);
-      enemy.x = host.x + offsetX;
-      enemy.y = host.y - host.displayHeight * 0.95;
-      enemy.setFlipX(enemy.getData('direction') < 0);
+      enemy.setData(dataKey, offset);
+
+      const baseX = host.x + enemy.getData('baseOffsetX');
+      const baseY = host.y - enemy.getData('baseOffsetY');
+
+      if (axis === 'vertical') {
+        enemy.x = baseX;
+        enemy.y = baseY + offset;
+        enemy.setFlipX(false);
+      } else {
+        enemy.x = baseX + offset;
+        enemy.y = baseY;
+        enemy.setFlipX(enemy.getData('direction') < 0);
+      }
+
       enemy.body.updateFromGameObject();
     });
   }
@@ -497,20 +511,46 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnTrap(platform) {
-    const trap = this.physics.add.image(platform.x, platform.y - platform.displayHeight * 0.7, 'hazard_trap');
+    const maxWidth = platform.displayWidth * GameConfig.hazards.trapWidthRatioMax;
+    const trapWidth = Math.min(GameConfig.hazards.trapBaseWidth, maxWidth);
+    const trapHeight = trapWidth * (GameConfig.hazards.trapBaseHeight / GameConfig.hazards.trapBaseWidth);
+    const offsetLimit = Math.max(
+      0,
+      platform.displayWidth * 0.5 - trapWidth * 0.5 - GameConfig.hazards.trapSidePadding
+    );
+    const offsetX = offsetLimit > 0 ? Phaser.Math.FloatBetween(-offsetLimit, offsetLimit) : 0;
+    const trap = this.physics.add.image(platform.x + offsetX, platform.y - platform.displayHeight * 0.7, 'hazard_trap');
+    const bodyWidth = Math.max(18, trapWidth - 14);
+    const bodyHeight = Math.max(10, trapHeight - 12);
+
     trap.setImmovable(true);
     trap.body.allowGravity = false;
     trap.setDepth(7);
-    trap.body.setSize(42, 20);
-    trap.body.setOffset(7, 6);
+    trap.setDisplaySize(trapWidth, trapHeight);
+    trap.body.setSize(bodyWidth, bodyHeight);
+    trap.body.setOffset((trapWidth - bodyWidth) * 0.5, (trapHeight - bodyHeight) * 0.5);
     trap.setDataEnabled();
     trap.setData('host', platform);
+    trap.setData('offsetX', offsetX);
     platform.setData('hasHazard', true);
     this.traps.add(trap);
   }
 
   spawnEnemy(platform) {
-    const enemy = this.physics.add.image(platform.x, platform.y - platform.displayHeight * 0.95, 'hazard_enemy');
+    const axis = Math.random() < GameConfig.hazards.enemyVerticalMoveChance ? 'vertical' : 'horizontal';
+    const baseOffsetX = Phaser.Math.FloatBetween(
+      -platform.displayWidth * GameConfig.hazards.enemyAnchorHorizontalRatio,
+      platform.displayWidth * GameConfig.hazards.enemyAnchorHorizontalRatio
+    );
+    const baseOffsetY = Phaser.Math.Between(
+      GameConfig.hazards.enemyFloatHeightMin,
+      GameConfig.hazards.enemyFloatHeightMax
+    );
+    const range = axis === 'vertical'
+      ? Phaser.Math.Between(GameConfig.hazards.enemyVerticalRangeMin, GameConfig.hazards.enemyVerticalRangeMax)
+      : Phaser.Math.Between(GameConfig.hazards.enemyHorizontalRangeMin, GameConfig.hazards.enemyHorizontalRangeMax);
+    const enemy = this.physics.add.image(platform.x + baseOffsetX, platform.y - baseOffsetY, 'hazard_enemy');
+
     enemy.setImmovable(true);
     enemy.body.allowGravity = false;
     enemy.setDepth(7);
@@ -518,9 +558,15 @@ class GameScene extends Phaser.Scene {
     enemy.body.setOffset(9, 10);
     enemy.setDataEnabled();
     enemy.setData('host', platform);
+    enemy.setData('axis', axis);
+    enemy.setData('baseOffsetX', baseOffsetX);
+    enemy.setData('baseOffsetY', baseOffsetY);
+    enemy.setData('range', range);
     enemy.setData('offsetX', 0);
+    enemy.setData('offsetY', 0);
     enemy.setData('direction', Math.random() > 0.5 ? 1 : -1);
     enemy.setData('speed', Phaser.Math.Between(GameConfig.hazards.enemySpeedMin, GameConfig.hazards.enemySpeedMax));
+    enemy.setFlipX(axis === 'horizontal' && enemy.getData('direction') < 0);
     platform.setData('hasHazard', true);
     this.enemies.add(enemy);
   }
