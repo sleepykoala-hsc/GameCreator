@@ -39,6 +39,7 @@ Each game is built following these conventions to ease future Unity mobile porti
 
 | Folder | Framework | Status |
 |--------|-----------|--------|
+| skybound-scribble | Phaser 3 | ✅ Complete |
 | *(more games coming soon)* | — | — |
 
 ## 开发规范 / Development Conventions
