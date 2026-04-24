@@ -58,6 +58,12 @@ const GameSystemConfig = {
   },
 
   shop: {
+    defaultLevels: {
+      luck: 0,
+      rocketDuration: 0,
+      laserDuration: 0,
+      shieldDuration: 0,
+    },
     upgrades: {
       luck: {
         label: '幸运值',

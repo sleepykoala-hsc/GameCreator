@@ -142,7 +142,7 @@ class GameScene extends Phaser.Scene {
     this.updateDifficulty();
     this.updateMovingPlatforms(delta);
     this.updateAttachedObjects(delta);
-    this.updateCoins(delta);
+    this.animateCoins(delta);
     this.recycleOffscreenObjects();
     this.checkFailure();
   }
@@ -851,7 +851,7 @@ class GameScene extends Phaser.Scene {
     this.coins.add(coin);
   }
 
-  updateCoins(delta) {
+  animateCoins(delta) {
     this.coins.getChildren().forEach((coin) => {
       if (!coin.active) {
         return;
@@ -1070,10 +1070,7 @@ class GameScene extends Phaser.Scene {
   }
 
   getStoredUpgrades() {
-    const defaults = Object.keys(GameConfig.shop.upgrades).reduce((result, key) => {
-      result[key] = 0;
-      return result;
-    }, {});
+    const defaults = { ...GameConfig.shop.defaultLevels };
 
     try {
       const raw = window.localStorage.getItem(GameConfig.storage.upgrades);

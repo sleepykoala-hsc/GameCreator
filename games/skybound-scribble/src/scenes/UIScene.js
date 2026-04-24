@@ -153,21 +153,21 @@ class UIScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(142).setVisible(false);
 
     let rowY = 212;
-    Object.entries(GameConfig.shop.upgrades).forEach(([key, config]) => {
+    Object.entries(GameConfig.shop.upgrades).forEach(([key, upgradeConfig]) => {
       const background = this.add.rectangle(GameConfig.width * 0.5, rowY, 336, 78, 0xffffff, 0.96)
         .setScrollFactor(0)
         .setDepth(142)
         .setStrokeStyle(2, 0x2d2a32)
         .setVisible(false);
 
-      const title = this.add.text(88, rowY - 22, config.label, {
+      const title = this.add.text(88, rowY - 22, upgradeConfig.label, {
         fontFamily: '"Trebuchet MS", "Microsoft YaHei", sans-serif',
         fontSize: '22px',
         fontStyle: 'bold',
         color: '#2d2a32',
       }).setScrollFactor(0).setDepth(143).setVisible(false);
 
-      const description = this.add.text(88, rowY + 2, config.description, {
+      const description = this.add.text(88, rowY + 2, upgradeConfig.description, {
         fontFamily: '"Trebuchet MS", "Microsoft YaHei", sans-serif',
         fontSize: '14px',
         color: '#605a66',
@@ -344,16 +344,16 @@ class UIScene extends Phaser.Scene {
   }
 
   purchaseUpgrade(key) {
-    const config = GameConfig.shop.upgrades[key];
+    const upgradeConfig = GameConfig.shop.upgrades[key];
     const upgrades = this.getStoredUpgrades();
     const currentLevel = upgrades[key] || 0;
 
-    if (currentLevel >= config.prices.length) {
-      this.shopHintText.setText(`${config.label}已满级。`);
+    if (currentLevel >= upgradeConfig.prices.length) {
+      this.shopHintText.setText(`${upgradeConfig.label}已满级。`);
       return;
     }
 
-    const price = config.prices[currentLevel];
+    const price = upgradeConfig.prices[currentLevel];
     const totalCoins = this.getStoredTotalCoins();
     if (totalCoins < price) {
       this.shopHintText.setText(`金币不足，还需要 ${price - totalCoins} 金币。`);
@@ -363,7 +363,7 @@ class UIScene extends Phaser.Scene {
     upgrades[key] = currentLevel + 1;
     this.saveStoredUpgrades(upgrades);
     this.saveStoredTotalCoins(totalCoins - price);
-    this.shopHintText.setText(`${config.label}升级成功，花费 ${price} 金币。`);
+    this.shopHintText.setText(`${upgradeConfig.label}升级成功，花费 ${price} 金币。`);
     this.updateShopTexts();
   }
 
@@ -373,19 +373,19 @@ class UIScene extends Phaser.Scene {
     this.shopCoinsText.setText(`累计金币：${totalCoins}`);
     this.refreshGameOverSummary();
 
-    Object.entries(GameConfig.shop.upgrades).forEach(([key, config]) => {
+    Object.entries(GameConfig.shop.upgrades).forEach(([key, upgradeConfig]) => {
       const level = upgrades[key] || 0;
-      const maxLevel = config.bonuses.length - 1;
+      const maxLevel = upgradeConfig.bonuses.length - 1;
       const row = this.shopRows[key];
       const effectText = this.formatUpgradeEffect(key, level);
       row.levelText.setText(`等级 ${level}/${maxLevel} · 当前效果：${effectText}`);
 
-      if (level >= config.prices.length) {
+      if (level >= upgradeConfig.prices.length) {
         row.buyButton.text.setText('满级');
         this.setButtonColor(row.buyButton, 0xb9e3a6);
       } else {
-        row.buyButton.text.setText(`${config.prices[level]} 金币`);
-        this.setButtonColor(row.buyButton, totalCoins >= config.prices[level] ? 0xffd87a : 0xd0d0d0);
+        row.buyButton.text.setText(`${upgradeConfig.prices[level]} 金币`);
+        this.setButtonColor(row.buyButton, totalCoins >= upgradeConfig.prices[level] ? 0xffd87a : 0xd0d0d0);
       }
     });
   }
@@ -395,14 +395,17 @@ class UIScene extends Phaser.Scene {
       return;
     }
 
-    this.gameOverSummary.setText(
-      `${this.lastGameOverPayload.reason}\n本局分数：${this.lastGameOverPayload.score}\n本局金币：${this.lastGameOverPayload.coins}\n累计金币：${this.getStoredTotalCoins()}`
-    );
+    this.gameOverSummary.setText([
+      this.lastGameOverPayload.reason,
+      `本局分数：${this.lastGameOverPayload.score}`,
+      `本局金币：${this.lastGameOverPayload.coins}`,
+      `累计金币：${this.getStoredTotalCoins()}`,
+    ].join('\n'));
   }
 
   formatUpgradeEffect(key, level) {
-    const config = GameConfig.shop.upgrades[key];
-    const bonus = config.bonuses[level] || 0;
+    const upgradeConfig = GameConfig.shop.upgrades[key];
+    const bonus = upgradeConfig.bonuses[level] || 0;
 
     if (key === 'luck') {
       return `+${Math.round(bonus * 100)}%`;
@@ -434,10 +437,7 @@ class UIScene extends Phaser.Scene {
   }
 
   getStoredUpgrades() {
-    const defaults = Object.keys(GameConfig.shop.upgrades).reduce((result, key) => {
-      result[key] = 0;
-      return result;
-    }, {});
+    const defaults = { ...GameConfig.shop.defaultLevels };
 
     try {
       const raw = window.localStorage.getItem(GameConfig.storage.upgrades);
