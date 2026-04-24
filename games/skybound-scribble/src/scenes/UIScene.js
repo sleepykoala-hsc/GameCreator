@@ -238,9 +238,10 @@ class UIScene extends Phaser.Scene {
   setButtonVisible(button, visible) {
     button.background.setVisible(visible);
     button.text.setVisible(visible);
-    button.background.disableInteractive();
     if (visible) {
       button.background.setInteractive({ useHandCursor: true });
+    } else {
+      button.background.disableInteractive();
     }
   }
 
