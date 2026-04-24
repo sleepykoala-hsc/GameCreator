@@ -139,7 +139,6 @@ class GameScene extends Phaser.Scene {
     this.updateDifficulty();
     this.updateMovingPlatforms(delta);
     this.updateAttachedObjects(delta);
-    this.updateProjectiles();
     this.recycleOffscreenObjects();
     this.checkFailure();
   }
@@ -501,14 +500,6 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  updateProjectiles() {
-    this.lasers.getChildren().forEach((laser) => {
-      if (laser.active) {
-        laser.body.updateFromGameObject();
-      }
-    });
-  }
-
   fireLaserShot() {
     const laser = this.physics.add.image(
       this.player.x,
@@ -766,21 +757,21 @@ class GameScene extends Phaser.Scene {
 
     if (
       futureScore >= GameConfig.powerups.rocketStartScore
-      && Math.random() < GameConfig.powerups.rocketChanceBase + difficulty * GameConfig.powerups.rocketChanceGrowth
+      && Math.random() < this.getPowerupSpawnChance('rocket', difficulty)
     ) {
       candidates.push('rocket');
     }
 
     if (
       futureScore >= GameConfig.powerups.laserStartScore
-      && Math.random() < GameConfig.powerups.laserChanceBase + difficulty * GameConfig.powerups.laserChanceGrowth
+      && Math.random() < this.getPowerupSpawnChance('laser', difficulty)
     ) {
       candidates.push('laser');
     }
 
     if (
       futureScore >= GameConfig.powerups.shieldStartScore
-      && Math.random() < GameConfig.powerups.shieldChanceBase + difficulty * GameConfig.powerups.shieldChanceGrowth
+      && Math.random() < this.getPowerupSpawnChance('shield', difficulty)
     ) {
       candidates.push('shield');
     }
@@ -794,6 +785,13 @@ class GameScene extends Phaser.Scene {
 
   canSpawnPlatformAttachment(platform) {
     return !platform.getData('hasSpring') && !platform.getData('hasPowerup') && !platform.getData('hasHazard');
+  }
+
+  getPowerupSpawnChance(type, difficulty) {
+    const baseChance = GameConfig.powerups[`${type}ChanceBase`];
+    const chanceDrop = GameConfig.powerups[`${type}ChanceDrop`] || 0;
+    const minChance = GameConfig.powerups[`${type}ChanceMin`] || 0;
+    return Math.max(minChance, baseChance - difficulty * chanceDrop);
   }
 
   isRocketActive() {
