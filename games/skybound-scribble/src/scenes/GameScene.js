@@ -511,8 +511,8 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnTrap(platform) {
-    const maxWidth = platform.displayWidth * GameConfig.hazards.trapWidthRatioMax;
-    const trapWidth = Math.min(GameConfig.hazards.trapBaseWidth, maxWidth);
+    const maxAllowedTrapWidth = platform.displayWidth * GameConfig.hazards.trapWidthRatioMax;
+    const trapWidth = Math.min(GameConfig.hazards.trapBaseWidth, maxAllowedTrapWidth);
     const trapHeight = trapWidth * (GameConfig.hazards.trapBaseHeight / GameConfig.hazards.trapBaseWidth);
     const offsetLimit = Math.max(
       0,
