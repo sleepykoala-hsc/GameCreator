@@ -14,7 +14,12 @@ class GameScene extends Phaser.Scene {
     this.restartKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     this.cameras.main.setBackgroundColor(GameConfig.backgroundColor);
-    this.physics.world.setBounds(-80, GameConfig.world.minY, GameConfig.width + 160, GameConfig.world.maxY - GameConfig.world.minY);
+    this.physics.world.setBounds(
+      -GameConfig.world.horizontalPadding,
+      GameConfig.world.minY,
+      GameConfig.width + GameConfig.world.horizontalPadding * 2,
+      GameConfig.world.maxY - GameConfig.world.minY
+    );
 
     this.createBackdrop();
     this.createClouds();
@@ -81,7 +86,7 @@ class GameScene extends Phaser.Scene {
     this.player = new Player(this, GameConfig.player.startX, GameConfig.player.startY);
     this.player.body.setGravityY(GameConfig.gravity);
     this.shieldAura = this.add.image(this.player.x, this.player.y, 'powerup_shield_aura');
-    this.shieldAura.setDepth(9);
+    this.shieldAura.setDepth(this.player.depth - 1);
     this.shieldAura.setVisible(false);
     this.shieldAura.setDisplaySize(GameConfig.powerups.shieldAuraSize, GameConfig.powerups.shieldAuraSize);
   }
@@ -220,7 +225,7 @@ class GameScene extends Phaser.Scene {
       }
 
       spring.x = host.x + spring.getData('offsetX');
-      spring.y = host.y - host.displayHeight * 0.75;
+      spring.y = host.y - host.displayHeight * GameConfig.platform.springVerticalOffsetRatio;
       spring.body.updateFromGameObject();
     });
 
@@ -252,7 +257,7 @@ class GameScene extends Phaser.Scene {
       }
 
       trap.x = host.x + trap.getData('offsetX');
-      trap.y = host.y - host.displayHeight * 0.7;
+      trap.y = host.y - host.displayHeight * GameConfig.hazards.trapVerticalOffsetRatio;
       trap.body.updateFromGameObject();
     });
 
@@ -587,7 +592,7 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    const host = hazard.getData && hazard.getData('host');
+    const host = hazard.getData('host');
     if (host && host.active) {
       host.setData('hasHazard', false);
     }
@@ -706,7 +711,11 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    const spring = this.physics.add.image(platform.x, platform.y - platform.displayHeight * 0.75, 'spring_idle');
+    const spring = this.physics.add.image(
+      platform.x,
+      platform.y - platform.displayHeight * GameConfig.platform.springVerticalOffsetRatio,
+      'spring_idle'
+    );
     spring.setImmovable(true);
     spring.body.allowGravity = false;
     spring.setDepth(6);
@@ -825,7 +834,11 @@ class GameScene extends Phaser.Scene {
       platform.displayWidth * 0.5 - trapWidth * 0.5 - GameConfig.hazards.trapSidePadding
     );
     const offsetX = offsetLimit > 0 ? Phaser.Math.FloatBetween(-offsetLimit, offsetLimit) : 0;
-    const trap = this.physics.add.image(platform.x + offsetX, platform.y - platform.displayHeight * 0.7, 'hazard_trap');
+    const trap = this.physics.add.image(
+      platform.x + offsetX,
+      platform.y - platform.displayHeight * GameConfig.hazards.trapVerticalOffsetRatio,
+      'hazard_trap'
+    );
     const bodyWidth = Math.max(GameConfig.hazards.trapBodyMinWidth, trapWidth - GameConfig.hazards.trapBodyWidthInset);
     const bodyHeight = Math.max(GameConfig.hazards.trapBodyMinHeight, trapHeight - GameConfig.hazards.trapBodyHeightInset);
 

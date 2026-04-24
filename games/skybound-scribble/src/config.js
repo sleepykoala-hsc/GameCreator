@@ -48,6 +48,7 @@ const GameConfig = {
     movingChanceGrowth: 0.18,
     breakingChanceBase: 0.1,
     breakingChanceGrowth: 0.16,
+    springVerticalOffsetRatio: 0.75,
   },
 
   hazards: {
@@ -63,6 +64,7 @@ const GameConfig = {
     trapBodyWidthInset: 14,
     trapBodyMinHeight: 10,
     trapBodyHeightInset: 12,
+    trapVerticalOffsetRatio: 0.7,
     enemyChanceBase: 0.08,
     enemyChanceGrowth: 0.12,
     enemySpeedMin: 32,
@@ -133,6 +135,7 @@ const GameConfig = {
   },
 
   world: {
+    horizontalPadding: 80,
     minY: -24000,
     maxY: 1400,
   },
