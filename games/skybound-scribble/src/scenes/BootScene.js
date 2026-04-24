@@ -11,6 +11,7 @@ class BootScene extends Phaser.Scene {
     this.createPlatformTextures();
     this.createSpringTextures();
     this.createHazardTextures();
+    this.createPowerupTextures();
     this.createCloudTexture();
     this.createAnimations();
 
@@ -257,6 +258,91 @@ class BootScene extends Phaser.Scene {
     trap.strokeRect(4, 24, 48, 6);
     trap.generateTexture('hazard_trap', 56, 32);
     trap.destroy();
+  }
+
+  createPowerupTextures() {
+    const rocket = this.make.graphics({ x: 0, y: 0, add: false });
+    rocket.fillStyle(0xff8f5a, 1);
+    rocket.lineStyle(3, 0x2d2a32, 1);
+    rocket.fillRoundedRect(10, 12, 16, 24, 7);
+    rocket.strokeRoundedRect(10, 12, 16, 24, 7);
+    rocket.fillStyle(0x8ed6ff, 1);
+    rocket.fillTriangle(18, 3, 9, 15, 27, 15);
+    rocket.lineStyle(3, 0x2d2a32, 1);
+    rocket.strokeTriangle(18, 3, 9, 15, 27, 15);
+    rocket.fillStyle(0xffdd57, 1);
+    rocket.fillTriangle(18, 46, 12, 35, 24, 35);
+    rocket.lineStyle(2, 0x2d2a32, 1);
+    rocket.strokeTriangle(18, 46, 12, 35, 24, 35);
+    rocket.fillStyle(0xffffff, 1);
+    rocket.fillCircle(18, 24, 4);
+    rocket.lineStyle(2, 0x2d2a32, 1);
+    rocket.strokeCircle(18, 24, 4);
+    rocket.generateTexture('powerup_rocket', 36, 52);
+    rocket.destroy();
+
+    const laserGun = this.make.graphics({ x: 0, y: 0, add: false });
+    laserGun.fillStyle(0x7f8cff, 1);
+    laserGun.lineStyle(3, 0x2d2a32, 1);
+    laserGun.fillRoundedRect(5, 12, 26, 10, 4);
+    laserGun.strokeRoundedRect(5, 12, 26, 10, 4);
+    laserGun.fillStyle(0xffdd57, 1);
+    laserGun.fillRect(24, 6, 4, 8);
+    laserGun.strokeRect(24, 6, 4, 8);
+    laserGun.fillStyle(0x4cc9f0, 1);
+    laserGun.fillRect(10, 21, 8, 9);
+    laserGun.strokeRect(10, 21, 8, 9);
+    laserGun.lineStyle(2, 0xfaf4e5, 0.95);
+    laserGun.beginPath();
+    laserGun.moveTo(28, 10);
+    laserGun.lineTo(34, 2);
+    laserGun.strokePath();
+    laserGun.generateTexture('powerup_laser', 36, 32);
+    laserGun.destroy();
+
+    const shield = this.make.graphics({ x: 0, y: 0, add: false });
+    shield.fillStyle(0x6fe3d3, 0.95);
+    shield.lineStyle(3, 0x2d2a32, 1);
+    shield.beginPath();
+    shield.moveTo(18, 4);
+    shield.lineTo(30, 9);
+    shield.lineTo(28, 24);
+    shield.lineTo(18, 32);
+    shield.lineTo(8, 24);
+    shield.lineTo(6, 9);
+    shield.closePath();
+    shield.fillPath();
+    shield.strokePath();
+    shield.lineStyle(2, 0xffffff, 0.95);
+    shield.beginPath();
+    shield.moveTo(18, 10);
+    shield.lineTo(24, 13);
+    shield.lineTo(23, 21);
+    shield.lineTo(18, 25);
+    shield.lineTo(13, 21);
+    shield.lineTo(12, 13);
+    shield.closePath();
+    shield.strokePath();
+    shield.generateTexture('powerup_shield', 36, 36);
+    shield.destroy();
+
+    const beam = this.make.graphics({ x: 0, y: 0, add: false });
+    beam.fillStyle(0xff5fb0, 0.95);
+    beam.lineStyle(2, 0x2d2a32, 1);
+    beam.fillRoundedRect(3, 2, 6, 34, 3);
+    beam.strokeRoundedRect(3, 2, 6, 34, 3);
+    beam.fillStyle(0xffffff, 0.9);
+    beam.fillRect(5, 4, 2, 30);
+    beam.generateTexture('powerup_laser_beam', 12, 38);
+    beam.destroy();
+
+    const aura = this.make.graphics({ x: 0, y: 0, add: false });
+    aura.lineStyle(5, 0x6fe3d3, 0.9);
+    aura.strokeCircle(41, 41, 32);
+    aura.lineStyle(2, 0xffffff, 0.85);
+    aura.strokeCircle(41, 41, 26);
+    aura.generateTexture('powerup_shield_aura', 82, 82);
+    aura.destroy();
   }
 
   createCloudTexture() {

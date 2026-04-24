@@ -21,10 +21,11 @@ class GameScene extends Phaser.Scene {
     this.createGroups();
     this.setupAudioUnlock();
     this.createPlayer();
+    this.initializePowerupState();
     this.createStartingPlatforms();
     this.createColliders();
     this.syncScore(true);
-    this.bus.emit('status-changed', '左右移动，自动跳跃，留意尖刺和涂鸦怪。');
+    this.refreshStatusMessage();
   }
 
   createBackdrop() {
@@ -58,8 +59,10 @@ class GameScene extends Phaser.Scene {
   createGroups() {
     this.platforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.springs = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.powerups = this.physics.add.group({ allowGravity: false, immovable: true });
     this.enemies = this.physics.add.group({ allowGravity: false, immovable: true });
     this.traps = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.lasers = this.physics.add.group({ allowGravity: false, immovable: true });
   }
 
   setupAudioUnlock() {
@@ -77,6 +80,24 @@ class GameScene extends Phaser.Scene {
   createPlayer() {
     this.player = new Player(this, GameConfig.player.startX, GameConfig.player.startY);
     this.player.body.setGravityY(GameConfig.gravity);
+    this.shieldAura = this.add.image(this.player.x, this.player.y, 'powerup_shield_aura');
+    this.shieldAura.setDepth(9);
+    this.shieldAura.setVisible(false);
+    this.shieldAura.setDisplaySize(GameConfig.powerups.shieldAuraSize, GameConfig.powerups.shieldAuraSize);
+  }
+
+  initializePowerupState() {
+    this.activeEffects = {
+      rocketUntil: 0,
+      laserUntil: 0,
+      shieldUntil: 0,
+    };
+    this.effectFlags = {
+      rocket: false,
+      laser: false,
+      shield: false,
+    };
+    this.nextLaserShotAt = 0;
   }
 
   createStartingPlatforms() {
@@ -91,8 +112,10 @@ class GameScene extends Phaser.Scene {
   createColliders() {
     this.physics.add.collider(this.player, this.platforms, this.handlePlatformLanding, this.canLandOnPlatform, this);
     this.physics.add.overlap(this.player, this.springs, this.handleSpringOverlap, null, this);
+    this.physics.add.overlap(this.player, this.powerups, this.handlePowerupOverlap, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.handleEnemyOverlap, null, this);
     this.physics.add.overlap(this.player, this.traps, this.handleTrapOverlap, null, this);
+    this.physics.add.overlap(this.lasers, this.enemies, this.handleLaserEnemyOverlap, null, this);
   }
 
   update(_, delta) {
@@ -104,12 +127,14 @@ class GameScene extends Phaser.Scene {
     }
 
     this.handlePlayerMovement();
+    this.updatePowerupEffects();
     this.player.updateVisuals();
     this.player.wrapHorizontally(GameConfig.width);
     this.updateCamera();
     this.updateDifficulty();
     this.updateMovingPlatforms(delta);
     this.updateAttachedObjects(delta);
+    this.updateProjectiles();
     this.recycleOffscreenObjects();
     this.checkFailure();
   }
@@ -199,6 +224,22 @@ class GameScene extends Phaser.Scene {
       spring.body.updateFromGameObject();
     });
 
+    this.powerups.getChildren().forEach((powerup) => {
+      if (!powerup.active) {
+        return;
+      }
+
+      const host = powerup.getData('host');
+      if (!host || !host.active) {
+        this.destroyPowerup(powerup);
+        return;
+      }
+
+      powerup.x = host.x + powerup.getData('offsetX');
+      powerup.y = host.y - powerup.getData('offsetY');
+      powerup.body.updateFromGameObject();
+    });
+
     this.traps.getChildren().forEach((trap) => {
       if (!trap.active) {
         return;
@@ -271,15 +312,30 @@ class GameScene extends Phaser.Scene {
       }
     });
 
+    this.powerups.getChildren().forEach((powerup) => {
+      if (powerup.active && powerup.y > cleanupY) {
+        this.destroyPowerup(powerup);
+      }
+    });
+
     this.enemies.getChildren().forEach((enemy) => {
       if (enemy.active && enemy.y > cleanupY) {
-        enemy.destroy();
+        this.destroyHazard(enemy);
       }
     });
 
     this.traps.getChildren().forEach((trap) => {
       if (trap.active && trap.y > cleanupY) {
-        trap.destroy();
+        this.destroyHazard(trap);
+      }
+    });
+
+    this.lasers.getChildren().forEach((laser) => {
+      if (
+        laser.active
+        && (laser.y > cleanupY || laser.y < this.cameras.main.scrollY - GameConfig.powerups.laserCleanupMargin)
+      ) {
+        laser.destroy();
       }
     });
   }
@@ -301,6 +357,7 @@ class GameScene extends Phaser.Scene {
 
     this.isGameOver = true;
     this.canRestart = false;
+    this.clearPowerupEffects();
     this.player.setTint(tint);
     this.player.setVelocity(0, 0);
     this.physics.pause();
@@ -327,6 +384,10 @@ class GameScene extends Phaser.Scene {
 
   canLandOnPlatform(player, platform) {
     if (this.isGameOver || !platform.active) {
+      return false;
+    }
+
+    if (this.activeEffects.rocketUntil > this.time.now) {
       return false;
     }
 
@@ -381,12 +442,122 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  handleEnemyOverlap() {
-    this.triggerHazardFailure('撞上了涂鸦怪');
+  handlePowerupOverlap(_, powerup) {
+    if (!powerup.active) {
+      return;
+    }
+
+    const type = powerup.getData('type');
+    this.destroyPowerup(powerup);
+    this.activatePowerup(type);
   }
 
-  handleTrapOverlap() {
-    this.triggerHazardFailure('踩到了尖刺陷阱');
+  activatePowerup(type) {
+    const now = this.time.now;
+
+    if (type === 'rocket') {
+      this.activeEffects.rocketUntil = now + GameConfig.powerups.rocketDuration;
+    } else if (type === 'laser') {
+      this.activeEffects.laserUntil = now + GameConfig.powerups.laserDuration;
+      this.nextLaserShotAt = now;
+    } else if (type === 'shield') {
+      this.activeEffects.shieldUntil = now + GameConfig.powerups.shieldDuration;
+    }
+
+    this.refreshStatusMessage();
+  }
+
+  updatePowerupEffects() {
+    const now = this.time.now;
+    const nextFlags = {
+      rocket: this.activeEffects.rocketUntil > now,
+      laser: this.activeEffects.laserUntil > now,
+      shield: this.activeEffects.shieldUntil > now,
+    };
+
+    if (nextFlags.rocket) {
+      this.player.setVelocityY(-GameConfig.powerups.rocketFlySpeed);
+    }
+
+    this.shieldAura.setVisible(nextFlags.shield);
+    this.shieldAura.setPosition(this.player.x, this.player.y);
+
+    if (nextFlags.laser && now >= this.nextLaserShotAt) {
+      this.fireLaserShot();
+      this.nextLaserShotAt = now + GameConfig.powerups.laserFireInterval;
+    }
+
+    if (
+      nextFlags.rocket !== this.effectFlags.rocket
+      || nextFlags.laser !== this.effectFlags.laser
+      || nextFlags.shield !== this.effectFlags.shield
+    ) {
+      this.effectFlags = nextFlags;
+      this.refreshStatusMessage();
+    }
+  }
+
+  updateProjectiles() {
+    this.lasers.getChildren().forEach((laser) => {
+      if (laser.active) {
+        laser.body.updateFromGameObject();
+      }
+    });
+  }
+
+  fireLaserShot() {
+    const laser = this.physics.add.image(
+      this.player.x,
+      this.player.y - this.player.displayHeight * 0.7,
+      'powerup_laser_beam'
+    );
+    laser.setImmovable(true);
+    laser.body.allowGravity = false;
+    laser.setDepth(8);
+    laser.setDisplaySize(GameConfig.powerups.laserWidth, GameConfig.powerups.laserHeight);
+    laser.body.setSize(GameConfig.powerups.laserBodyWidth, GameConfig.powerups.laserBodyHeight);
+    laser.body.setOffset(
+      (GameConfig.powerups.laserWidth - GameConfig.powerups.laserBodyWidth) * 0.5,
+      (GameConfig.powerups.laserHeight - GameConfig.powerups.laserBodyHeight) * 0.5
+    );
+    laser.setVelocityY(-GameConfig.powerups.laserSpeed);
+    this.lasers.add(laser);
+  }
+
+  handleLaserEnemyOverlap(laser, enemy) {
+    if (!laser.active || !enemy.active) {
+      return;
+    }
+
+    laser.destroy();
+    this.destroyHazard(enemy);
+  }
+
+  handleEnemyOverlap(_, enemy) {
+    this.resolveHazardOverlap(enemy, '撞上了涂鸦怪');
+  }
+
+  handleTrapOverlap(_, trap) {
+    this.resolveHazardOverlap(trap, '踩到了尖刺陷阱');
+  }
+
+  resolveHazardOverlap(hazard, reason) {
+    if (!hazard.active) {
+      return;
+    }
+
+    if (this.activeEffects.rocketUntil > this.time.now) {
+      return;
+    }
+
+    if (this.activeEffects.shieldUntil > this.time.now) {
+      this.activeEffects.shieldUntil = 0;
+      this.destroyHazard(hazard);
+      this.refreshStatusMessage();
+      return;
+    }
+
+    this.triggerHazardFailure(reason);
   }
 
   triggerHazardFailure(reason) {
@@ -396,6 +567,69 @@ class GameScene extends Phaser.Scene {
 
     this.gameOverReason = reason;
     this.endRun(0xf28482);
+  }
+
+  destroyPowerup(powerup) {
+    if (!powerup || !powerup.active) {
+      return;
+    }
+
+    const host = powerup.getData('host');
+    if (host && host.active) {
+      host.setData('hasPowerup', false);
+    }
+
+    powerup.destroy();
+  }
+
+  destroyHazard(hazard) {
+    if (!hazard || !hazard.active) {
+      return;
+    }
+
+    const host = hazard.getData && hazard.getData('host');
+    if (host && host.active) {
+      host.setData('hasHazard', false);
+    }
+
+    hazard.destroy();
+  }
+
+  clearPowerupEffects() {
+    this.activeEffects.rocketUntil = 0;
+    this.activeEffects.laserUntil = 0;
+    this.activeEffects.shieldUntil = 0;
+    this.effectFlags = {
+      rocket: false,
+      laser: false,
+      shield: false,
+    };
+    this.shieldAura.setVisible(false);
+  }
+
+  refreshStatusMessage() {
+    if (this.isGameOver) {
+      return;
+    }
+
+    const effects = [];
+
+    if (this.activeEffects.rocketUntil > this.time.now) {
+      effects.push('火箭推进中');
+    }
+
+    if (this.activeEffects.laserUntil > this.time.now) {
+      effects.push('激光枪连射中');
+    }
+
+    if (this.activeEffects.shieldUntil > this.time.now) {
+      effects.push('保护罩待命');
+    }
+
+    const text = effects.length > 0
+      ? `左右移动，自动跳跃，${effects.join('，')}。`
+      : '左右移动，自动跳跃，留意尖刺和涂鸦怪。';
+    this.bus.emit('status-changed', text);
   }
 
   spawnPlatformRow(y) {
@@ -441,6 +675,7 @@ class GameScene extends Phaser.Scene {
     platform.setData('broken', false);
     platform.setData('boost', GameConfig.player.jumpForce);
     platform.setData('hasSpring', false);
+    platform.setData('hasPowerup', false);
     platform.setData('hasHazard', false);
 
     if (type === 'moving') {
@@ -452,6 +687,7 @@ class GameScene extends Phaser.Scene {
 
     if (type !== 'breaking') {
       this.trySpawnSpring(platform);
+      this.trySpawnPowerup(platform);
       this.trySpawnHazard(platform);
     }
 
@@ -485,7 +721,7 @@ class GameScene extends Phaser.Scene {
   }
 
   trySpawnHazard(platform) {
-    if (platform.getData('hasSpring') || platform.getData('hasHazard')) {
+    if (platform.getData('hasSpring') || platform.getData('hasPowerup') || platform.getData('hasHazard')) {
       return;
     }
 
@@ -508,6 +744,76 @@ class GameScene extends Phaser.Scene {
     ) {
       this.spawnEnemy(platform);
     }
+  }
+
+  trySpawnPowerup(platform) {
+    if (platform.getData('hasSpring') || platform.getData('hasPowerup') || platform.getData('hasHazard')) {
+      return;
+    }
+
+    const travelHeight = this.getTravelHeightForY(platform.y);
+    const futureScore = this.getScoreForTravelHeight(travelHeight);
+    const difficulty = this.getDifficulty(travelHeight);
+    const candidates = [];
+
+    if (
+      futureScore >= GameConfig.powerups.rocketStartScore
+      && Math.random() < GameConfig.powerups.rocketChanceBase + difficulty * GameConfig.powerups.rocketChanceGrowth
+    ) {
+      candidates.push('rocket');
+    }
+
+    if (
+      futureScore >= GameConfig.powerups.laserStartScore
+      && Math.random() < GameConfig.powerups.laserChanceBase + difficulty * GameConfig.powerups.laserChanceGrowth
+    ) {
+      candidates.push('laser');
+    }
+
+    if (
+      futureScore >= GameConfig.powerups.shieldStartScore
+      && Math.random() < GameConfig.powerups.shieldChanceBase + difficulty * GameConfig.powerups.shieldChanceGrowth
+    ) {
+      candidates.push('shield');
+    }
+
+    if (candidates.length === 0) {
+      return;
+    }
+
+    this.spawnPowerup(platform, Phaser.Utils.Array.GetRandom(candidates));
+  }
+
+  spawnPowerup(platform, type) {
+    const textureMap = {
+      rocket: 'powerup_rocket',
+      laser: 'powerup_laser',
+      shield: 'powerup_shield',
+    };
+    const powerup = this.physics.add.image(
+      platform.x,
+      platform.y - GameConfig.powerups.floatOffsetY,
+      textureMap[type]
+    );
+
+    powerup.setImmovable(true);
+    powerup.body.allowGravity = false;
+    powerup.setDepth(6);
+    powerup.body.setSize(GameConfig.powerups.pickupBodySize, GameConfig.powerups.pickupBodySize);
+    powerup.body.setOffset(GameConfig.powerups.pickupBodyOffset, GameConfig.powerups.pickupBodyOffset);
+    powerup.setDataEnabled();
+    powerup.setData('host', platform);
+    powerup.setData('type', type);
+    powerup.setData(
+      'offsetX',
+      Phaser.Math.FloatBetween(
+        -platform.displayWidth * GameConfig.powerups.sideOffsetRatio,
+        platform.displayWidth * GameConfig.powerups.sideOffsetRatio
+      )
+    );
+    powerup.setData('offsetY', GameConfig.powerups.floatOffsetY);
+    platform.setData('hasPowerup', true);
+    this.powerups.add(powerup);
   }
 
   spawnTrap(platform) {
