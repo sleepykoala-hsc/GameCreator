@@ -59,7 +59,6 @@ const GameConfig = {
     trapSidePadding: 6,
     trapBaseWidth: 56,
     trapBaseHeight: 32,
-    trapAspectRatio: 32 / 56,
     trapBodyMinWidth: 18,
     trapBodyWidthInset: 14,
     trapBodyMinHeight: 10,
