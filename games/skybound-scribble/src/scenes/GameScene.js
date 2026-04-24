@@ -336,10 +336,9 @@ class GameScene extends Phaser.Scene {
     });
 
     this.lasers.getChildren().forEach((laser) => {
-      if (
-        laser.active
-        && (laser.y > cleanupY || laser.y < this.cameras.main.scrollY - GameConfig.powerups.laserCleanupMargin)
-      ) {
+      const aboveScreen = laser.y < this.cameras.main.scrollY - GameConfig.powerups.laserCleanupMargin;
+      const belowScreen = laser.y > cleanupY;
+      if (laser.active && (aboveScreen || belowScreen)) {
         laser.destroy();
       }
     });
@@ -730,7 +729,7 @@ class GameScene extends Phaser.Scene {
   }
 
   trySpawnHazard(platform) {
-    if (platform.getData('hasSpring') || platform.getData('hasPowerup') || platform.getData('hasHazard')) {
+    if (!this.canSpawnPlatformAttachment(platform)) {
       return;
     }
 
@@ -756,7 +755,7 @@ class GameScene extends Phaser.Scene {
   }
 
   trySpawnPowerup(platform) {
-    if (platform.getData('hasSpring') || platform.getData('hasPowerup') || platform.getData('hasHazard')) {
+    if (!this.canSpawnPlatformAttachment(platform)) {
       return;
     }
 
@@ -791,6 +790,10 @@ class GameScene extends Phaser.Scene {
     }
 
     this.spawnPowerup(platform, Phaser.Utils.Array.GetRandom(candidates));
+  }
+
+  canSpawnPlatformAttachment(platform) {
+    return !platform.getData('hasSpring') && !platform.getData('hasPowerup') && !platform.getData('hasHazard');
   }
 
   spawnPowerup(platform, type) {
