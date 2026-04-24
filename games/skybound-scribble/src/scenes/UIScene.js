@@ -12,7 +12,7 @@ class UIScene extends Phaser.Scene {
 
     this.handleScoreChanged(0);
     this.handleBestScoreChanged(this.getStoredBestScore());
-    this.handleStatusChanged('左右移动，自动跳跃，踩上弹簧冲更高。');
+    this.handleStatusChanged('左右移动，自动跳跃，留意尖刺和涂鸦怪。');
   }
 
   createPanel() {
@@ -87,7 +87,7 @@ class UIScene extends Phaser.Scene {
 
   handleGameOver(payload) {
     this.handleBestScoreChanged(payload.bestScore);
-    this.handleStatusChanged(`本局 ${payload.score} 分 · 点击屏幕或空格重新开始`);
+    this.handleStatusChanged(`${payload.reason} · 本局 ${payload.score} 分 · 点击屏幕或空格重新开始`);
   }
 
   getStoredBestScore() {

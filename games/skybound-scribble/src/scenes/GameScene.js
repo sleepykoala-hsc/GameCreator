@@ -6,6 +6,7 @@ class GameScene extends Phaser.Scene {
   create() {
     this.isGameOver = false;
     this.canRestart = false;
+    this.gameOverReason = '失足掉出了画面';
     this.score = 0;
     this.bestPlayerY = GameConfig.player.startY;
     this.nextPlatformY = GameConfig.player.startY + 60;
@@ -18,11 +19,12 @@ class GameScene extends Phaser.Scene {
     this.createBackdrop();
     this.createClouds();
     this.createGroups();
+    this.setupAudioUnlock();
     this.createPlayer();
     this.createStartingPlatforms();
     this.createColliders();
     this.syncScore(true);
-    this.bus.emit('status-changed', '左右移动，自动跳跃，踩上弹簧冲更高。');
+    this.bus.emit('status-changed', '左右移动，自动跳跃，留意尖刺和涂鸦怪。');
   }
 
   createBackdrop() {
@@ -56,6 +58,20 @@ class GameScene extends Phaser.Scene {
   createGroups() {
     this.platforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.springs = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.enemies = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.traps = this.physics.add.group({ allowGravity: false, immovable: true });
+  }
+
+  setupAudioUnlock() {
+    const unlockAudio = () => {
+      const context = this.sound && this.sound.context;
+      if (context && context.state === 'suspended') {
+        context.resume().catch(() => {});
+      }
+    };
+
+    this.input.once('pointerdown', unlockAudio);
+    this.input.keyboard.once('keydown', unlockAudio);
   }
 
   createPlayer() {
@@ -75,6 +91,8 @@ class GameScene extends Phaser.Scene {
   createColliders() {
     this.physics.add.collider(this.player, this.platforms, this.handlePlatformLanding, null, this);
     this.physics.add.overlap(this.player, this.springs, this.handleSpringOverlap, null, this);
+    this.physics.add.overlap(this.player, this.enemies, this.handleEnemyOverlap, null, this);
+    this.physics.add.overlap(this.player, this.traps, this.handleTrapOverlap, null, this);
   }
 
   update(_, delta) {
@@ -91,7 +109,7 @@ class GameScene extends Phaser.Scene {
     this.updateCamera();
     this.updateDifficulty();
     this.updateMovingPlatforms(delta);
-    this.updateSprings();
+    this.updateAttachedObjects(delta);
     this.recycleOffscreenObjects();
     this.checkFailure();
   }
@@ -164,7 +182,7 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  updateSprings() {
+  updateAttachedObjects(delta) {
     this.springs.getChildren().forEach((spring) => {
       if (!spring.active) {
         return;
@@ -179,6 +197,48 @@ class GameScene extends Phaser.Scene {
       spring.x = host.x + spring.getData('offsetX');
       spring.y = host.y - host.displayHeight * 0.75;
       spring.body.updateFromGameObject();
+    });
+
+    this.traps.getChildren().forEach((trap) => {
+      if (!trap.active) {
+        return;
+      }
+
+      const host = trap.getData('host');
+      if (!host || !host.active) {
+        trap.destroy();
+        return;
+      }
+
+      trap.x = host.x;
+      trap.y = host.y - host.displayHeight * 0.7;
+      trap.body.updateFromGameObject();
+    });
+
+    const deltaSeconds = delta / 1000;
+    this.enemies.getChildren().forEach((enemy) => {
+      if (!enemy.active) {
+        return;
+      }
+
+      const host = enemy.getData('host');
+      if (!host || !host.active) {
+        enemy.destroy();
+        return;
+      }
+
+      let offsetX = enemy.getData('offsetX') + enemy.getData('speed') * enemy.getData('direction') * deltaSeconds;
+      const limit = Math.max(12, host.displayWidth * 0.5 - GameConfig.hazards.enemyPatrolPadding);
+      if (Math.abs(offsetX) > limit) {
+        offsetX = Phaser.Math.Clamp(offsetX, -limit, limit);
+        enemy.setData('direction', enemy.getData('direction') * -1);
+      }
+
+      enemy.setData('offsetX', offsetX);
+      enemy.x = host.x + offsetX;
+      enemy.y = host.y - host.displayHeight * 0.95;
+      enemy.setFlipX(enemy.getData('direction') < 0);
+      enemy.body.updateFromGameObject();
     });
   }
 
@@ -196,6 +256,18 @@ class GameScene extends Phaser.Scene {
         spring.destroy();
       }
     });
+
+    this.enemies.getChildren().forEach((enemy) => {
+      if (enemy.active && enemy.y > cleanupY) {
+        enemy.destroy();
+      }
+    });
+
+    this.traps.getChildren().forEach((trap) => {
+      if (trap.active && trap.y > cleanupY) {
+        trap.destroy();
+      }
+    });
   }
 
   checkFailure() {
@@ -204,14 +276,24 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.gameOverReason = '失足掉出了画面';
+    this.endRun(0xc7a77a);
+  }
+
+  endRun(tint) {
+    if (this.isGameOver) {
+      return;
+    }
+
     this.isGameOver = true;
     this.canRestart = false;
-    this.player.setTint(0xc7a77a);
+    this.player.setTint(tint);
     this.player.setVelocity(0, 0);
     this.physics.pause();
     this.bus.emit('game-over', {
       score: this.score,
       bestScore: this.getBestScore(),
+      reason: this.gameOverReason,
     });
     this.time.delayedCall(300, () => {
       this.canRestart = true;
@@ -235,6 +317,7 @@ class GameScene extends Phaser.Scene {
     }
 
     const boost = platform.getData('boost') || GameConfig.player.jumpForce;
+    this.playSurfaceSound(platform.getData('type') === 'breaking' ? 'breaking' : 'landing');
     this.player.bounce(boost);
 
     if (platform.getData('type') === 'breaking' && !platform.getData('broken')) {
@@ -258,6 +341,7 @@ class GameScene extends Phaser.Scene {
 
     spring.setData('used', true);
     spring.setTexture('spring_used');
+    this.playSurfaceSound('spring');
     this.player.bounce(GameConfig.player.springForce);
     this.tweens.add({
       targets: spring,
@@ -265,6 +349,23 @@ class GameScene extends Phaser.Scene {
       yoyo: true,
       duration: 120,
     });
+  }
+
+  handleEnemyOverlap() {
+    this.triggerHazardFailure('撞上了涂鸦怪');
+  }
+
+  handleTrapOverlap() {
+    this.triggerHazardFailure('踩到了尖刺陷阱');
+  }
+
+  triggerHazardFailure(reason) {
+    if (this.isGameOver) {
+      return;
+    }
+
+    this.gameOverReason = reason;
+    this.endRun(0xf28482);
   }
 
   spawnPlatformRow(y) {
@@ -309,6 +410,8 @@ class GameScene extends Phaser.Scene {
     platform.setData('type', type);
     platform.setData('broken', false);
     platform.setData('boost', GameConfig.player.jumpForce);
+    platform.setData('hasSpring', false);
+    platform.setData('hasHazard', false);
 
     if (type === 'moving') {
       const speed = Phaser.Math.Between(GameConfig.platform.movingSpeedMin, GameConfig.platform.movingSpeedMax) * (Math.random() > 0.5 ? 1 : -1);
@@ -319,6 +422,7 @@ class GameScene extends Phaser.Scene {
 
     if (type !== 'breaking') {
       this.trySpawnSpring(platform);
+      this.trySpawnHazard(platform);
     }
 
     return platform;
@@ -346,7 +450,63 @@ class GameScene extends Phaser.Scene {
     spring.setData('host', platform);
     spring.setData('used', false);
     spring.setData('offsetX', Phaser.Math.Between(-platform.displayWidth * 0.22, platform.displayWidth * 0.22));
+    platform.setData('hasSpring', true);
     this.springs.add(spring);
+  }
+
+  trySpawnHazard(platform) {
+    if (platform.getData('hasSpring') || platform.getData('hasHazard')) {
+      return;
+    }
+
+    const travelHeight = this.getTravelHeightForY(platform.y);
+    const futureScore = this.getScoreForTravelHeight(travelHeight);
+    const difficulty = this.getDifficulty(travelHeight);
+
+    if (
+      platform.getData('type') === 'static'
+      && futureScore >= GameConfig.hazards.trapStartScore
+      && Math.random() < GameConfig.hazards.trapChanceBase + difficulty * GameConfig.hazards.trapChanceGrowth
+    ) {
+      this.spawnTrap(platform);
+      return;
+    }
+
+    if (
+      futureScore >= GameConfig.hazards.enemyStartScore
+      && Math.random() < GameConfig.hazards.enemyChanceBase + difficulty * GameConfig.hazards.enemyChanceGrowth
+    ) {
+      this.spawnEnemy(platform);
+    }
+  }
+
+  spawnTrap(platform) {
+    const trap = this.physics.add.image(platform.x, platform.y - platform.displayHeight * 0.7, 'hazard_trap');
+    trap.setImmovable(true);
+    trap.body.allowGravity = false;
+    trap.setDepth(7);
+    trap.body.setSize(42, 20);
+    trap.body.setOffset(7, 6);
+    trap.setDataEnabled();
+    trap.setData('host', platform);
+    platform.setData('hasHazard', true);
+    this.traps.add(trap);
+  }
+
+  spawnEnemy(platform) {
+    const enemy = this.physics.add.image(platform.x, platform.y - platform.displayHeight * 0.95, 'hazard_enemy');
+    enemy.setImmovable(true);
+    enemy.body.allowGravity = false;
+    enemy.setDepth(7);
+    enemy.body.setSize(26, 20);
+    enemy.body.setOffset(9, 10);
+    enemy.setDataEnabled();
+    enemy.setData('host', platform);
+    enemy.setData('offsetX', 0);
+    enemy.setData('direction', Math.random() > 0.5 ? 1 : -1);
+    enemy.setData('speed', Phaser.Math.Between(GameConfig.hazards.enemySpeedMin, GameConfig.hazards.enemySpeedMax));
+    platform.setData('hasHazard', true);
+    this.enemies.add(enemy);
   }
 
   getGapForHeight(travelHeight) {
@@ -389,8 +549,12 @@ class GameScene extends Phaser.Scene {
     return Math.max(0, GameConfig.player.startY - y);
   }
 
+  getScoreForTravelHeight(travelHeight) {
+    return Math.max(0, Math.floor(travelHeight / GameConfig.scoring.pixelsPerPoint));
+  }
+
   syncScore(force) {
-    const nextScore = Math.max(0, Math.floor(this.getTravelHeightForY(this.bestPlayerY) / GameConfig.scoring.pixelsPerPoint));
+    const nextScore = this.getScoreForTravelHeight(this.getTravelHeightForY(this.bestPlayerY));
     if (!force && nextScore === this.score) {
       return;
     }
@@ -420,5 +584,42 @@ class GameScene extends Phaser.Scene {
     }
 
     return bestScore;
+  }
+
+  playSurfaceSound(soundKey) {
+    const notes = GameConfig.audio[soundKey];
+    const context = this.sound && this.sound.context;
+    if (!notes || !context) {
+      return;
+    }
+
+    if (context.state === 'suspended') {
+      context.resume().catch(() => {});
+      if (context.state === 'suspended') {
+        return;
+      }
+    }
+
+    const now = context.currentTime;
+    notes.forEach((note) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const delay = note.delay || 0;
+      const startTime = now + delay;
+      const endTime = startTime + note.duration;
+
+      oscillator.type = note.wave;
+      oscillator.frequency.setValueAtTime(note.startFreq, startTime);
+      oscillator.frequency.exponentialRampToValueAtTime(note.endFreq, endTime);
+
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(note.volume, startTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startTime);
+      oscillator.stop(endTime + 0.02);
+    });
   }
 }

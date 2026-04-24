@@ -10,6 +10,7 @@ class BootScene extends Phaser.Scene {
     this.createPlayerTextures();
     this.createPlatformTextures();
     this.createSpringTextures();
+    this.createHazardTextures();
     this.createCloudTexture();
     this.createAnimations();
 
@@ -125,12 +126,40 @@ class BootScene extends Phaser.Scene {
       }
 
       if (texture.key === 'platform_break') {
+        graphics.fillStyle(0xa4724e, 0.95);
+        graphics.beginPath();
+        graphics.moveTo(8, 12);
+        graphics.lineTo(24, 7);
+        graphics.lineTo(39, 14);
+        graphics.lineTo(56, 5);
+        graphics.lineTo(74, 13);
+        graphics.lineTo(92, 8);
+        graphics.lineTo(112, 15);
+        graphics.lineTo(120, 11);
+        graphics.lineTo(120, 19);
+        graphics.lineTo(8, 19);
+        graphics.closePath();
+        graphics.fillPath();
+
         graphics.lineStyle(2, 0x2d2a32, 1);
         graphics.beginPath();
-        graphics.moveTo(35, 7);
+        graphics.moveTo(18, 7);
+        graphics.lineTo(30, 18);
+        graphics.lineTo(44, 10);
         graphics.lineTo(55, 18);
-        graphics.lineTo(72, 8);
-        graphics.lineTo(93, 18);
+        graphics.lineTo(69, 9);
+        graphics.lineTo(82, 18);
+        graphics.lineTo(97, 8);
+        graphics.lineTo(112, 17);
+        graphics.strokePath();
+
+        graphics.beginPath();
+        graphics.moveTo(50, 8);
+        graphics.lineTo(44, 18);
+        graphics.moveTo(78, 10);
+        graphics.lineTo(74, 18);
+        graphics.moveTo(99, 9);
+        graphics.lineTo(95, 18);
         graphics.strokePath();
       }
 
@@ -174,6 +203,60 @@ class BootScene extends Phaser.Scene {
     up.strokePath();
     up.generateTexture('spring_used', 32, 36);
     up.destroy();
+  }
+
+  createHazardTextures() {
+    const enemy = this.make.graphics({ x: 0, y: 0, add: false });
+    enemy.fillStyle(0xe96b6b, 1);
+    enemy.lineStyle(3, 0x2d2a32, 1);
+    enemy.fillEllipse(22, 20, 28, 18);
+    enemy.strokeEllipse(22, 20, 28, 18);
+    enemy.fillCircle(16, 12, 8);
+    enemy.fillCircle(28, 12, 8);
+    enemy.strokeCircle(16, 12, 8);
+    enemy.strokeCircle(28, 12, 8);
+    enemy.fillStyle(0xffffff, 1);
+    enemy.fillCircle(16, 12, 3);
+    enemy.fillCircle(28, 12, 3);
+    enemy.fillStyle(0x2d2a32, 1);
+    enemy.fillCircle(16, 12, 1.4);
+    enemy.fillCircle(28, 12, 1.4);
+    enemy.beginPath();
+    enemy.moveTo(11, 26);
+    enemy.lineTo(8, 34);
+    enemy.moveTo(18, 27);
+    enemy.lineTo(18, 35);
+    enemy.moveTo(26, 27);
+    enemy.lineTo(26, 35);
+    enemy.moveTo(33, 26);
+    enemy.lineTo(36, 34);
+    enemy.moveTo(11, 10);
+    enemy.lineTo(7, 4);
+    enemy.moveTo(33, 10);
+    enemy.lineTo(37, 4);
+    enemy.strokePath();
+    enemy.generateTexture('hazard_enemy', 44, 38);
+    enemy.destroy();
+
+    const trap = this.make.graphics({ x: 0, y: 0, add: false });
+    trap.fillStyle(0xb8c3cc, 1);
+    trap.lineStyle(3, 0x2d2a32, 1);
+    trap.beginPath();
+    trap.moveTo(4, 24);
+    trap.lineTo(12, 7);
+    trap.lineTo(20, 24);
+    trap.lineTo(28, 8);
+    trap.lineTo(36, 24);
+    trap.lineTo(44, 6);
+    trap.lineTo(52, 24);
+    trap.closePath();
+    trap.fillPath();
+    trap.strokePath();
+    trap.fillStyle(0x8fa0ad, 1);
+    trap.fillRect(4, 24, 48, 6);
+    trap.strokeRect(4, 24, 48, 6);
+    trap.generateTexture('hazard_trap', 56, 32);
+    trap.destroy();
   }
 
   createCloudTexture() {

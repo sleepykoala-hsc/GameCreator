@@ -49,12 +49,38 @@ const GameConfig = {
     breakingChanceGrowth: 0.16,
   },
 
+  hazards: {
+    trapStartScore: 90,
+    enemyStartScore: 140,
+    trapChanceBase: 0.12,
+    trapChanceGrowth: 0.08,
+    enemyChanceBase: 0.08,
+    enemyChanceGrowth: 0.12,
+    enemySpeedMin: 32,
+    enemySpeedMax: 52,
+    enemyPatrolPadding: 20,
+  },
+
   difficulty: {
     maxTravelHeight: 2400,
   },
 
   scoring: {
     pixelsPerPoint: 12,
+  },
+
+  audio: {
+    landing: [
+      { wave: 'triangle', startFreq: 240, endFreq: 164, duration: 0.09, volume: 0.026 },
+    ],
+    breaking: [
+      { wave: 'sawtooth', startFreq: 210, endFreq: 118, duration: 0.11, volume: 0.024 },
+      { wave: 'square', startFreq: 152, endFreq: 84, duration: 0.08, volume: 0.014, delay: 0.02 },
+    ],
+    spring: [
+      { wave: 'sine', startFreq: 320, endFreq: 510, duration: 0.1, volume: 0.028 },
+      { wave: 'triangle', startFreq: 420, endFreq: 760, duration: 0.13, volume: 0.02, delay: 0.04 },
+    ],
   },
 
   world: {
