@@ -89,7 +89,7 @@ class GameScene extends Phaser.Scene {
   }
 
   createColliders() {
-    this.physics.add.collider(this.player, this.platforms, this.handlePlatformLanding, null, this);
+    this.physics.add.collider(this.player, this.platforms, this.handlePlatformLanding, this.canLandOnPlatform, this);
     this.physics.add.overlap(this.player, this.springs, this.handleSpringOverlap, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.handleEnemyOverlap, null, this);
     this.physics.add.overlap(this.player, this.traps, this.handleTrapOverlap, null, this);
@@ -311,8 +311,24 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  canLandOnPlatform(player, platform) {
+    if (this.isGameOver || !platform.active) {
+      return false;
+    }
+
+    if (player.body.velocity.y <= 0) {
+      return false;
+    }
+
+    const playerBottom = player.body.bottom;
+    const previousBottom = player.body.prev.y + player.body.height;
+    const platformTop = platform.body.top;
+
+    return previousBottom <= platformTop + 6 && playerBottom >= platformTop;
+  }
+
   handlePlatformLanding(player, platform) {
-    if (this.isGameOver || player.body.velocity.y <= 0 || !platform.active) {
+    if (this.isGameOver || !platform.active) {
       return;
     }
 
