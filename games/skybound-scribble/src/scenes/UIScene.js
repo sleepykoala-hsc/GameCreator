@@ -134,27 +134,27 @@ class UIScene extends Phaser.Scene {
       GameConfig.width * 0.5,
       GameConfig.height * 0.5,
       392,
-      520,
+      568,
       0xfffcf3,
       1
     ).setScrollFactor(0).setDepth(141).setStrokeStyle(4, 0x2d2a32).setVisible(false);
 
-    this.shopTitle = this.add.text(GameConfig.width * 0.5, 118, '道具商店', {
+    this.shopTitle = this.add.text(GameConfig.width * 0.5, 108, '道具商店', {
       fontFamily: '"Trebuchet MS", "Microsoft YaHei", sans-serif',
       fontSize: '30px',
       fontStyle: 'bold',
       color: '#2d2a32',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(142).setVisible(false);
 
-    this.shopCoinsText = this.add.text(GameConfig.width * 0.5, 154, '', {
+    this.shopCoinsText = this.add.text(GameConfig.width * 0.5, 144, '', {
       fontFamily: '"Trebuchet MS", "Microsoft YaHei", sans-serif',
       fontSize: '18px',
       color: '#2d2a32',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(142).setVisible(false);
 
-    let rowY = 212;
+    let rowY = 202;
     Object.entries(GameConfig.shop.upgrades).forEach(([key, upgradeConfig]) => {
-      const background = this.add.rectangle(GameConfig.width * 0.5, rowY, 336, 78, 0xffffff, 0.96)
+      const background = this.add.rectangle(GameConfig.width * 0.5, rowY, 336, 92, 0xffffff, 0.96)
         .setScrollFactor(0)
         .setDepth(142)
         .setStrokeStyle(2, 0x2d2a32)
@@ -179,6 +179,12 @@ class UIScene extends Phaser.Scene {
         color: '#2d2a32',
       }).setScrollFactor(0).setDepth(143).setVisible(false);
 
+      const nextLevelText = this.add.text(88, rowY + 42, '', {
+        fontFamily: '"Trebuchet MS", "Microsoft YaHei", sans-serif',
+        fontSize: '13px',
+        color: '#7a6c58',
+      }).setScrollFactor(0).setDepth(143).setVisible(false);
+
       const buyButton = this.createButton(356, rowY, 78, 38, '升级', () => {
         this.purchaseUpgrade(key);
       }, 143);
@@ -189,13 +195,14 @@ class UIScene extends Phaser.Scene {
         title,
         description,
         levelText,
+        nextLevelText,
         buyButton,
       };
 
       rowY += 92;
     });
 
-    this.shopHintText = this.add.text(GameConfig.width * 0.5, 466, '', {
+    this.shopHintText = this.add.text(GameConfig.width * 0.5, 566, '', {
       fontFamily: '"Trebuchet MS", "Microsoft YaHei", sans-serif',
       fontSize: '16px',
       color: '#7a6c58',
@@ -203,7 +210,7 @@ class UIScene extends Phaser.Scene {
       wordWrap: { width: 320 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(142).setVisible(false);
 
-    this.shopCloseButton = this.createButton(GameConfig.width * 0.5, 548, 136, 44, '关闭商店', () => {
+    this.shopCloseButton = this.createButton(GameConfig.width * 0.5, 606, 136, 44, '关闭商店', () => {
       this.closeShop();
     }, 143);
     this.setButtonVisible(this.shopCloseButton, false);
@@ -319,6 +326,7 @@ class UIScene extends Phaser.Scene {
       row.title.setVisible(true);
       row.description.setVisible(true);
       row.levelText.setVisible(true);
+      row.nextLevelText.setVisible(true);
       this.setButtonVisible(row.buyButton, true);
     });
 
@@ -339,6 +347,7 @@ class UIScene extends Phaser.Scene {
       row.title.setVisible(false);
       row.description.setVisible(false);
       row.levelText.setVisible(false);
+      row.nextLevelText.setVisible(false);
       this.setButtonVisible(row.buyButton, false);
     });
   }
@@ -379,6 +388,7 @@ class UIScene extends Phaser.Scene {
       const row = this.shopRows[key];
       const effectText = this.formatUpgradeEffect(key, level);
       row.levelText.setText(`等级 ${level}/${maxLevel} · 当前效果：${effectText}`);
+      row.nextLevelText.setText(this.formatUpgradePreview(key, level));
 
       if (level >= upgradeConfig.prices.length) {
         row.buyButton.text.setText('满级');
@@ -412,6 +422,23 @@ class UIScene extends Phaser.Scene {
     }
 
     return `${GameConfig.powerups[key] + bonus}ms`;
+  }
+
+  formatUpgradePreview(key, level) {
+    const upgradeConfig = GameConfig.shop.upgrades[key];
+    if (level >= upgradeConfig.prices.length) {
+      return '下一级提升：已满级';
+    }
+
+    const currentBonus = upgradeConfig.bonuses[level] || 0;
+    const nextBonus = upgradeConfig.bonuses[level + 1] || currentBonus;
+    const delta = nextBonus - currentBonus;
+
+    if (key === 'luck') {
+      return `下一级提升：+${Math.round(delta * 100)}%`;
+    }
+
+    return `下一级提升：+${delta}ms`;
   }
 
   getStoredBestScore() {

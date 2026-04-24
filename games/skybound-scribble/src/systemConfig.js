@@ -17,6 +17,11 @@ const GameSystemConfig = {
     coinDisplaySize: 26,
     coinBodySize: 18,
     coinSpinSpeed: 0.0035,
+    pickupRise: 34,
+    pickupScale: 1.35,
+    pickupTweenDuration: 180,
+    pickupLabelRise: 40,
+    pickupLabelDuration: 260,
   },
 
   powerups: {

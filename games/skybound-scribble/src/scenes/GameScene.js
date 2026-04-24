@@ -458,12 +458,14 @@ class GameScene extends Phaser.Scene {
   }
 
   handleCoinOverlap(_, coin) {
-    if (!coin.active) {
+    if (!coin.active || coin.getData('collecting')) {
       return;
     }
 
-    this.addCoins(coin.getData('value') || GameConfig.currency.coinValue);
-    coin.destroy();
+    const value = coin.getData('value') || GameConfig.currency.coinValue;
+    this.addCoins(value);
+    this.playSurfaceSound('coin');
+    this.playCoinPickupFeedback(coin, value);
   }
 
   activatePowerup(type) {
@@ -847,6 +849,7 @@ class GameScene extends Phaser.Scene {
       (GameConfig.currency.coinDisplaySize - GameConfig.currency.coinBodySize) * 0.5
     );
     coin.setDataEnabled();
+    coin.setData('collecting', false);
     coin.setData('value', GameConfig.currency.coinValue);
     this.coins.add(coin);
   }
@@ -858,6 +861,41 @@ class GameScene extends Phaser.Scene {
       }
 
       coin.angle += delta * GameConfig.currency.coinSpinSpeed;
+    });
+  }
+
+  playCoinPickupFeedback(coin, value) {
+    coin.setData('collecting', true);
+    coin.body.enable = false;
+
+    const pickupLabel = this.add.text(coin.x, coin.y - 10, `+${value}`, {
+      fontFamily: '"Trebuchet MS", "Microsoft YaHei", sans-serif',
+      fontSize: '18px',
+      fontStyle: 'bold',
+      color: '#c98700',
+      stroke: '#fff8dc',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(20);
+
+    this.tweens.add({
+      targets: coin,
+      y: coin.y - GameConfig.currency.pickupRise,
+      scale: GameConfig.currency.pickupScale,
+      alpha: 0,
+      duration: GameConfig.currency.pickupTweenDuration,
+      onComplete: () => {
+        coin.destroy();
+      },
+    });
+
+    this.tweens.add({
+      targets: pickupLabel,
+      y: pickupLabel.y - GameConfig.currency.pickupLabelRise,
+      alpha: 0,
+      duration: GameConfig.currency.pickupLabelDuration,
+      onComplete: () => {
+        pickupLabel.destroy();
+      },
     });
   }
 

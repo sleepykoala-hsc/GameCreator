@@ -110,6 +110,10 @@ const GameConfig = {
       { wave: 'sine', startFreq: 320, endFreq: 510, duration: 0.1, volume: 0.028 },
       { wave: 'triangle', startFreq: 420, endFreq: 760, duration: 0.13, volume: 0.02, delay: 0.04 },
     ],
+    coin: [
+      { wave: 'square', startFreq: 740, endFreq: 980, duration: 0.05, volume: 0.02 },
+      { wave: 'triangle', startFreq: 980, endFreq: 1280, duration: 0.07, volume: 0.015, delay: 0.03 },
+    ],
   },
 
   world: {
