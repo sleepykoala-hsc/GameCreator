@@ -324,7 +324,7 @@ class GameScene extends Phaser.Scene {
     const previousBottom = player.body.prev.y + player.body.height;
     const platformTop = platform.body.top;
 
-    return previousBottom <= platformTop + 6 && playerBottom >= platformTop;
+    return previousBottom <= platformTop + GameConfig.player.landingTolerance && playerBottom >= platformTop;
   }
 
   handlePlatformLanding(player, platform) {

@@ -10,6 +10,7 @@ const GameConfig = {
     startY: 570,
     moveSpeed: 270,
     airDrag: 0.86,
+    landingTolerance: 6,
     jumpForce: 670,
     springForce: 980,
     width: 52,
