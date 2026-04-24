@@ -59,6 +59,11 @@ const GameConfig = {
     trapSidePadding: 6,
     trapBaseWidth: 56,
     trapBaseHeight: 32,
+    trapAspectRatio: 32 / 56,
+    trapBodyMinWidth: 18,
+    trapBodyWidthInset: 14,
+    trapBodyMinHeight: 10,
+    trapBodyHeightInset: 12,
     enemyChanceBase: 0.08,
     enemyChanceGrowth: 0.12,
     enemySpeedMin: 32,
@@ -71,6 +76,10 @@ const GameConfig = {
     enemyVerticalRangeMin: 18,
     enemyVerticalRangeMax: 34,
     enemyVerticalMoveChance: 0.5,
+    enemyBodyWidth: 26,
+    enemyBodyHeight: 20,
+    enemyBodyOffsetX: 9,
+    enemyBodyOffsetY: 10,
   },
 
   difficulty: {

@@ -513,15 +513,15 @@ class GameScene extends Phaser.Scene {
   spawnTrap(platform) {
     const maxAllowedTrapWidth = platform.displayWidth * GameConfig.hazards.trapWidthRatioMax;
     const trapWidth = Math.min(GameConfig.hazards.trapBaseWidth, maxAllowedTrapWidth);
-    const trapHeight = trapWidth * (GameConfig.hazards.trapBaseHeight / GameConfig.hazards.trapBaseWidth);
+    const trapHeight = trapWidth * GameConfig.hazards.trapAspectRatio;
     const offsetLimit = Math.max(
       0,
       platform.displayWidth * 0.5 - trapWidth * 0.5 - GameConfig.hazards.trapSidePadding
     );
     const offsetX = offsetLimit > 0 ? Phaser.Math.FloatBetween(-offsetLimit, offsetLimit) : 0;
     const trap = this.physics.add.image(platform.x + offsetX, platform.y - platform.displayHeight * 0.7, 'hazard_trap');
-    const bodyWidth = Math.max(18, trapWidth - 14);
-    const bodyHeight = Math.max(10, trapHeight - 12);
+    const bodyWidth = Math.max(GameConfig.hazards.trapBodyMinWidth, trapWidth - GameConfig.hazards.trapBodyWidthInset);
+    const bodyHeight = Math.max(GameConfig.hazards.trapBodyMinHeight, trapHeight - GameConfig.hazards.trapBodyHeightInset);
 
     trap.setImmovable(true);
     trap.body.allowGravity = false;
@@ -554,8 +554,8 @@ class GameScene extends Phaser.Scene {
     enemy.setImmovable(true);
     enemy.body.allowGravity = false;
     enemy.setDepth(7);
-    enemy.body.setSize(26, 20);
-    enemy.body.setOffset(9, 10);
+    enemy.body.setSize(GameConfig.hazards.enemyBodyWidth, GameConfig.hazards.enemyBodyHeight);
+    enemy.body.setOffset(GameConfig.hazards.enemyBodyOffsetX, GameConfig.hazards.enemyBodyOffsetY);
     enemy.setDataEnabled();
     enemy.setData('host', platform);
     enemy.setData('axis', axis);
