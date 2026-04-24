@@ -538,9 +538,13 @@ class GameScene extends Phaser.Scene {
 
   spawnEnemy(platform) {
     const axis = Math.random() < GameConfig.hazards.enemyVerticalMoveChance ? 'vertical' : 'horizontal';
-    const baseOffsetX = Phaser.Math.FloatBetween(
-      -platform.displayWidth * GameConfig.hazards.enemyAnchorHorizontalRatio,
-      platform.displayWidth * GameConfig.hazards.enemyAnchorHorizontalRatio
+    const sideDirection = Math.random() > 0.5 ? 1 : -1;
+    const baseOffsetX = sideDirection * (
+      platform.displayWidth * 0.5
+      + Phaser.Math.Between(
+        GameConfig.hazards.enemySpawnSideClearanceMin,
+        GameConfig.hazards.enemySpawnSideClearanceMax
+      )
     );
     const baseOffsetY = Phaser.Math.Between(
       GameConfig.hazards.enemyFloatHeightMin,
