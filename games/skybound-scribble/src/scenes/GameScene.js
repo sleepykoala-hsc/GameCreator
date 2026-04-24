@@ -391,7 +391,7 @@ class GameScene extends Phaser.Scene {
       return false;
     }
 
-    if (this.activeEffects.rocketUntil > this.time.now) {
+    if (this.isRocketActive()) {
       return false;
     }
 
@@ -474,9 +474,9 @@ class GameScene extends Phaser.Scene {
   updatePowerupEffects() {
     const now = this.time.now;
     const nextFlags = {
-      rocket: this.activeEffects.rocketUntil > now,
-      laser: this.activeEffects.laserUntil > now,
-      shield: this.activeEffects.shieldUntil > now,
+      rocket: this.isRocketActive(),
+      laser: this.isLaserActive(),
+      shield: this.isShieldActive(),
     };
 
     if (nextFlags.rocket) {
@@ -550,12 +550,12 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.activeEffects.rocketUntil > this.time.now) {
+    if (this.isRocketActive()) {
       return;
     }
 
-    if (this.activeEffects.shieldUntil > this.time.now) {
-      this.activeEffects.shieldUntil = 0;
+    if (this.isShieldActive()) {
+      this.deactivateShield();
       this.destroyHazard(hazard);
       this.refreshStatusMessage();
       return;
@@ -602,7 +602,7 @@ class GameScene extends Phaser.Scene {
   clearPowerupEffects() {
     this.activeEffects.rocketUntil = 0;
     this.activeEffects.laserUntil = 0;
-    this.activeEffects.shieldUntil = 0;
+    this.deactivateShield();
     this.effectFlags = {
       rocket: false,
       laser: false,
@@ -618,15 +618,15 @@ class GameScene extends Phaser.Scene {
 
     const effects = [];
 
-    if (this.activeEffects.rocketUntil > this.time.now) {
+    if (this.isRocketActive()) {
       effects.push('火箭推进中');
     }
 
-    if (this.activeEffects.laserUntil > this.time.now) {
+    if (this.isLaserActive()) {
       effects.push('激光枪连射中');
     }
 
-    if (this.activeEffects.shieldUntil > this.time.now) {
+    if (this.isShieldActive()) {
       effects.push('保护罩待命');
     }
 
@@ -794,6 +794,23 @@ class GameScene extends Phaser.Scene {
 
   canSpawnPlatformAttachment(platform) {
     return !platform.getData('hasSpring') && !platform.getData('hasPowerup') && !platform.getData('hasHazard');
+  }
+
+  isRocketActive() {
+    return this.activeEffects.rocketUntil > this.time.now;
+  }
+
+  isLaserActive() {
+    return this.activeEffects.laserUntil > this.time.now;
+  }
+
+  isShieldActive() {
+    return this.activeEffects.shieldUntil > this.time.now;
+  }
+
+  deactivateShield() {
+    this.activeEffects.shieldUntil = 0;
+    this.shieldAura.setVisible(false);
   }
 
   spawnPowerup(platform, type) {
